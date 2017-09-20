@@ -48,6 +48,7 @@ public class PlayScreen implements Screen
     public PlayScreen(SpaceInvaders game)
     {
 
+        this.game = game;
         this.batch = game.batch;
         this.hud = new HudScene(batch);
 
@@ -97,14 +98,6 @@ public class PlayScreen implements Screen
         camera.update();
         this.hud.stage.draw();
 
-        if (HudScene.lives == 0)
-        {
-
-            game.setScreen(new GameOverScreen(game));
-            dispose();
-
-        }
-
         if (num_invaders == 0) {
             initInvaders();
             num_invaders = 60;
@@ -142,7 +135,6 @@ public class PlayScreen implements Screen
             }
 
         }
-
 
         batch.setProjectionMatrix(camera.combined);
         batch.begin();
@@ -277,6 +269,14 @@ public class PlayScreen implements Screen
                     }
 
                 }
+
+        if (HudScene.lives == 0)
+        {
+
+            game.setScreen(new GameOverScreen(game));
+            dispose();
+
+        }
 
     }
 
