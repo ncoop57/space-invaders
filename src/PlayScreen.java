@@ -28,7 +28,9 @@ public class PlayScreen implements Screen
     private SpriteBatch batch;
     private OrthographicCamera camera;
     private Texture spaceship_texture;
-    private Texture invader_texture;
+    private Texture invader1_texture;
+    private Texture invader2_texture;
+    private Texture invader3_texture;
     private Rectangle spaceship;
     private ShapeRenderer shape_renderer;
     private Rectangle[][] invaders = new Rectangle[6][10];
@@ -43,7 +45,10 @@ public class PlayScreen implements Screen
     private double speed = 1;
     private boolean speedup = true;
     private int num_invaders = 60;
-    private Rectangle mother_ship;
+    private Rectangle mothership;
+    private long last_mothership = TimeUtils.nanoTime();
+    private boolean show_mothership = false;
+    private Texture mothership_texture;
 
     public PlayScreen(SpaceInvaders game)
     {
@@ -51,21 +56,25 @@ public class PlayScreen implements Screen
         this.game = game;
         this.batch = game.batch;
         this.hud = new HudScene(batch);
+        this.mothership = new Rectangle(0, 420, 32, 32);
 
         camera = new OrthographicCamera();
         camera.setToOrtho(false, 800, 480);
 
         shape_renderer = new ShapeRenderer();
-        invader_texture = new Texture("invader-01.png");
+        invader1_texture = new Texture("invader-01.png");
+        invader2_texture = new Texture("invader-02.png");
+        invader3_texture = new Texture("invader-03.png");
+        mothership_texture = new Texture("mothership.png");
         space_missiles = new Array<Rectangle>();
         invader_missiles = new Array<Rectangle>();
 
-        spaceship_texture = new Texture("badlogic.jpg");
+        spaceship_texture = new Texture("spaceship.png");
         spaceship = new Rectangle();
         spaceship.x = 800 / 2 - 16 / 2;
         spaceship.y = 20;
-        spaceship.width = 16;
-        spaceship.height = 32;
+        spaceship.width = 40;
+        spaceship.height = 40;
 
         initInvaders();
 
@@ -101,6 +110,7 @@ public class PlayScreen implements Screen
         if (num_invaders == 0) {
             initInvaders();
             num_invaders = 60;
+            HudScene.addLife();
         }
 
         if (space_missiles.size > 0)
@@ -136,18 +146,43 @@ public class PlayScreen implements Screen
 
         }
 
+        if ((TimeUtils.nanoTime() - last_mothership)*1 > 1000000000 && show_mothership == false)
+                show_mothership = true;
+
         batch.setProjectionMatrix(camera.combined);
         batch.begin();
+
+        batch.draw(spaceship_texture, spaceship.x, spaceship.y, 40, 40);
+
+        if (show_mothership)
+        {
+            batch.draw(mothership_texture, mothership.x, mothership.y, 40, 40);
+            mothership.x += 100 * Gdx.graphics.getDeltaTime();
+            if (mothership.x > 800)
+            {
+
+                this.mothership = new Rectangle(0, 420, 32, 32);
+                this.show_mothership = false;
+
+            }
+        }
+
         for (int i = 0; i < invaders.length; i++)
             for (int j = 0; j < invaders[i].length; j++)
                 if (invaders[i][j] != null)
-                    batch.draw(invader_texture, invaders[i][j].x, invaders[i][j].y, 40, 40);
+                    if (i == 0 || i == 1)
+                        batch.draw(invader3_texture, invaders[i][j].x, invaders[i][j].y, 40, 40);
+                    else if (i == 2 || i == 3)
+                        batch.draw(invader2_texture, invaders[i][j].x, invaders[i][j].y, 40, 40);
+                    else if (i == 4 || i == 5)
+                        batch.draw(invader1_texture, invaders[i][j].x, invaders[i][j].y, 40, 40);
+
         batch.end();
 
         shape_renderer.setProjectionMatrix(camera.combined);
         shape_renderer.begin(ShapeRenderer.ShapeType.Filled);
-        shape_renderer.setColor(0, 1, 0, 1);
-        shape_renderer.rect(spaceship.x, spaceship.y, spaceship.width, spaceship.height);
+        //shape_renderer.setColor(0, 1, 0, 1);
+       // shape_renderer.rect(spaceship.x, spaceship.y, spaceship.width, spaceship.height);
         shape_renderer.setColor(1, 1, 1, 1);
 
         for (Rectangle space_missile : space_missiles) {
@@ -178,6 +213,22 @@ public class PlayScreen implements Screen
                         }
 
                     }
+
+            if (show_mothership)
+            {
+
+                double dist = Math.sqrt(Math.pow(mothership.x + mothership.width / 2 - space_missile.x + space_missile.width / 2, 2) + Math.pow(mothership.y + mothership.height / 2 - space_missile.y + space_missile.height / 2, 2));
+                if (dist < mothership.width / 2 + space_missile.width || dist < mothership.height / 2 + space_missile.height)
+                {
+                    this.mothership = new Rectangle(0, 420, 32, 32);
+                    this.show_mothership = false;
+                    SpaceInvaders.manager.get("audio/sounds/invaderkilled.wav", Sound.class).play();
+                    fired = false;
+                    this.hud.addScore(100 * (rand.nextInt(3) + 1));
+
+                }
+            }
+
         }
         for (Rectangle invader_missile : invader_missiles) {
             shape_renderer.rect(invader_missile.x, invader_missile.y, invader_missile.width, invader_missile.height);
@@ -188,7 +239,6 @@ public class PlayScreen implements Screen
             if (dist < spaceship.width / 2 + invader_missile.width || dist < spaceship.height / 2 + invader_missile.height) {
                 invader_missiles.removeValue(invader_missile, false);
                 SpaceInvaders.manager.get("audio/sounds/explosion.wav", Sound.class).play();
-                this.hud.addScore(20);
                 fired = false;
                 this.hud.removeLife();
             }
